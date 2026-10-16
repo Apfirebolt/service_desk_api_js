@@ -1,0 +1,38 @@
+{
+  "name": "expense_tracker",
+  "version": "1.0.0",
+  "description": "An expense tracker API created using Express",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "Expense",
+    "Management",
+    "System"
+  ],
+  "author": "Apfirebolt",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/preset-env": "^7.23.3",
+    "bcryptjs": "*",
+    "connect-history-api-fallback": "*",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-async-handler": "*",
+    "jsonwebtoken": "*",
+    "mongoose": "*",
+    "morgan": "*",
+    "multer": "^2.2.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.5.0",
+    "babel-jest": "^29.7.0",
+    "nodemon": "^3.0.1"
+  }
+}
