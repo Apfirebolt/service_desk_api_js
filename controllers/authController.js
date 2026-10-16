@@ -1,13 +1,28 @@
 import asyncHandler from 'express-async-handler'
-import generateToken from '../utils/generateToken.js'
+import jwt from 'jsonwebtoken'
+import { generateToken, generateRefreshToken } from '../utils/generateToken.js'
 import User from '../models/user.js'
+import cloudinary from '../utils/cloudinary.js'
 
+// Helper: Stream buffer directly to Cloudinary
+const uploadToCloudinary = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: 'user_profiles' },
+      (error, result) => {
+        if (error) return reject(error)
+        resolve(result)
+      }
+    )
+    uploadStream.end(buffer)
+  })
+}
 
 // @desc    Auth user & get token
 // @route   POST /api/auth/login
 // @access  Public
 const authUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body
+  const { email, password, rememberMe } = req.body
 
   const user = await User.findOne({ email })
 
@@ -18,7 +33,9 @@ const authUser = asyncHandler(async (req, res) => {
       lastName: user.lastName,
       email: user.email,
       isAdmin: user.isAdmin,
-      token: generateToken(user)
+      token: generateToken(user),
+      ...(rememberMe && { refreshToken: generateRefreshToken(user) }),
+      profilePic: user.profilePic,
     })
   } else {
     res.status(401)
@@ -56,7 +73,8 @@ const registerUser = asyncHandler(async (req, res) => {
       email: user.email,
       isAdmin: user.isAdmin,
       userType: user.userType,
-      token: generateToken(user._id),
+      token: generateToken(user),
+      refreshToken: generateRefreshToken(user),
     })
   } else {
     res.status(400)
@@ -64,12 +82,39 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 })
 
-// @desc    Get all users
-// @route   GET /api/auth/users
+// @desc    Refresh access token using a refresh token
+// @route   POST /api/auth/refresh
 // @access  Public
-const getAllUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({})
-  res.status(200).json(users)
+const refreshToken = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body
+
+  if (!refreshToken) {
+    res.status(401)
+    throw new Error('Refresh Token is required')
+  }
+
+  try {
+    // 1. Verify the refresh token signature
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET)
+
+    // 2. Find user by id from payload
+    const user = await User.findById(decoded.id)
+
+    if (!user) {
+      res.status(401)
+      throw new Error('Invalid Refresh Token - User not found')
+    }
+
+    // 3. Generate a brand new access token
+    const newAccessToken = generateToken(user)
+
+    res.status(200).json({
+      token: newAccessToken,
+    })
+  } catch (error) {
+    res.status(403)
+    throw new Error('Invalid or expired refresh token')
+  }
 })
 
 // @desc    Get user profile
@@ -86,6 +131,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
       email: user.email,
       isAdmin: user.isAdmin,
       userType: user.userType,
+      profilePic: user.profilePic,
     })
   } else {
     res.status(404)
@@ -93,10 +139,104 @@ const getUserProfile = asyncHandler(async (req, res) => {
   }
 })
 
+// @desc    Update user profile picture
+// @route   PUT /api/auth/profile/pic
+// @access  Private
+const updateUserProfilePic = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    res.status(400)
+    throw new Error('Please upload an image file')
+  }
+
+  const user = await User.findById(req.user._id)
+
+  if (!user) {
+    res.status(404)
+    throw new Error('User not found')
+  }
+
+  // Delete previous Cloudinary image if it exists
+  if (user.profilePic?.public_id) {
+    await cloudinary.uploader.destroy(user.profilePic.public_id)
+  }
+
+  const result = await uploadToCloudinary(req.file.buffer)
+
+  user.profilePic = {
+    url: result.secure_url,
+    public_id: result.public_id,
+  }
+
+  const updatedUser = await user.save()
+
+  res.status(200).json({
+    message: 'Profile picture updated successfully',
+    profilePic: updatedUser.profilePic,
+  })
+})
+
+// @desc    Update user password
+// @route   PUT /api/auth/change-password
+// @access  Private
+const changeUserPassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body
+
+  const user = await User.findById(req.user._id)
+
+  if (!user) {
+    res.status(404)
+    throw new Error('User not found')
+  }
+
+  const isMatch = await user.matchPassword(currentPassword)
+
+  if (!isMatch) {
+    res.status(400)
+    throw new Error('Current password is incorrect')
+  }
+
+  user.password = newPassword
+  await user.save()
+
+  res.status(200).json({ message: 'Password updated successfully' })
+})
+
+// @desc    Update user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id)
+
+  if (!user) {
+    res.status(404)
+    throw new Error('User not found')
+  }
+
+  const { firstName, lastName, email } = req.body
+
+  if (firstName) user.firstName = firstName
+  if (lastName) user.lastName = lastName
+  if (email) user.email = email
+
+  const updatedUser = await user.save()
+
+  res.status(200).json({
+    _id: updatedUser._id,
+    firstName: updatedUser.firstName,
+    lastName: updatedUser.lastName,
+    email: updatedUser.email,
+    isAdmin: updatedUser.isAdmin,
+    userType: updatedUser.userType,
+    profilePic: updatedUser.profilePic,
+  })
+})
 
 export {
   authUser,
   registerUser,
+  refreshToken,
   getUserProfile,
-  getAllUsers,
+  updateUserProfilePic,
+  changeUserPassword,
+  updateUserProfile,
 }

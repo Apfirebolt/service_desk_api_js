@@ -4,12 +4,16 @@ import {
   authUser,
   registerUser,
   getUserProfile,
-  getAllUsers,
+  updateUserProfile,
+  changeUserPassword,
+  updateUserProfilePic,
+  refreshToken,
 } from '../controllers/authController.js'
 import { protect } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
 const upload = multer({ storage: multer.memoryStorage() })
+
 
 /**
  * @openapi
@@ -215,6 +219,26 @@ router.post('/login', authUser)
 
 /**
  * @openapi
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Access token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       401:
+ *         description: Refresh token missing or invalid
+ *       500:
+ *         description: Server error
+ */
+router.post('/refresh', refreshToken);
+
+/**
+ * @openapi
  * /api/auth/profile:
  *   get:
  *     summary: Get user profile
@@ -262,25 +286,76 @@ router.post('/login', authUser)
 router
   .route('/profile')
   .get(protect, getUserProfile)
+  .put(protect, updateUserProfile)
 
 /**
  * @openapi
- * /api/auth/users:
- *   get:
- *     summary: Get all users
+ * /api/auth/change-password:
+ *   put:
+ *     summary: Change user password
  *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ChangePasswordInput'
  *     responses:
  *       200:
- *         description: List of all users
+ *         description: Password updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/UserProfileResponse'
+ *               $ref: '#/components/schemas/MessageResponse'
+ *       400:
+ *         description: Current password is incorrect
+ *       401:
+ *         description: Unauthorized - Token missing or invalid
+ *       404:
+ *         description: User not found
  *       500:
  *         description: Server error
  */
-router.get('/users', getAllUsers)
+router.route('/change-password').put(protect, changeUserPassword)
+
+/**
+ * @openapi
+ * /api/auth/profile/pic:
+ *   put:
+ *     summary: Upload or update user profile picture
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Profile picture updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProfilePicUploadResponse'
+ *       400:
+ *         description: Please upload an image file
+ *       401:
+ *         description: Unauthorized - Token missing or invalid
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.route('/profile/pic').put(protect, upload.single('image'), updateUserProfilePic)
 
 export default router

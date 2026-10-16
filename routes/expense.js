@@ -5,7 +5,8 @@ import {
   getExpense,
   getUserExpenses,
   deleteExpense,
-  updateExpense
+  updateExpense,
+  getDuplicateExpenses
 } from '../controllers/expenseController.js'
 import { protect } from '../middleware/authMiddleware.js'
 
@@ -50,6 +51,27 @@ import { protect } from '../middleware/authMiddleware.js'
  *               example: 2026-08-12T10:20:00.000Z
  */
 
+/**
+ * @openapi
+ * /api/expense/duplicate-expenses:
+ *   get:
+ *     summary: Get duplicate expenses
+ *     tags: [Expenses]
+ *     responses:
+ *       200:
+ *         description: List of duplicate expenses retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Expense'
+ *       500:
+ *         description: Server error
+ */
+router
+  .route('/duplicate-expenses')
+  .get(getDuplicateExpenses)
 
 /**
  * @openapi

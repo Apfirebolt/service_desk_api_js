@@ -9,6 +9,7 @@ import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/auth.js";
 import expenseRoutes from "./routes/expense.js";
+import contactRoutes from "./routes/contact.js";
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOpti
 
 app.use("/api/auth", authRoutes);
 app.use("/api/expense", expenseRoutes);
+app.use("/api/contact", contactRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running....");

@@ -39,10 +39,11 @@ const getUserExpenses = asyncHandler(async (req, res) => {
 // @route   POST /api/expense
 // @access  Private - User
 const createExpense = asyncHandler(async (req, res) => {
-  const { amount, type, description } = req.body;
+  const { amount, type, description, mode } = req.body;
 
   const expense = await Expense.create({
     amount,
+    mode,
     type,
     description,
     user: req.user._id,
@@ -50,7 +51,6 @@ const createExpense = asyncHandler(async (req, res) => {
 
   if (expense) {
     res.status(201).json(expense);
-
   } else {
     res.status(400);
     throw new Error("Invalid Expense data");
@@ -76,6 +76,7 @@ const updateExpense = asyncHandler(async (req, res) => {
     expense.amount = req.body.amount || expense.amount;
     expense.description = req.body.description || expense.description;
     expense.type = req.body.type || expense.type;
+    expense.mode = req.body.mode || expense.mode;
     const updatedExpense = await expense.save();
 
     res.json(updatedExpense);
@@ -133,10 +134,32 @@ const getExpense = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Number of duplicate expenses
+// @route   GET /api/duplicate-expenses
+// @access  Private
+const getDuplicateExpenses = asyncHandler(async (req, res, next) => {
+
+    await Expense.find({})
+    .exec()
+    .then(async (result) => {
+      const totalExpense = result.length > 0 ? result[0].totalExpense : 0;
+      const count = await Expense.countDocuments({ });
+      res.status(200).json({
+        totalExpense,
+        total: count,
+        success: true,
+      });
+    })
+    .catch((err) => {
+      return next(err);
+    });
+});
+
 export {
   getUserExpenses,
   createExpense,
   updateExpense,
   deleteExpense,
-  getExpense
+  getExpense,
+  getDuplicateExpenses
 };
