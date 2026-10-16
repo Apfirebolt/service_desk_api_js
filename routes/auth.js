@@ -4,6 +4,7 @@ import {
   authUser,
   registerUser,
   getUserProfile,
+  getAllUsers,
 } from '../controllers/authController.js'
 import { protect } from '../middleware/authMiddleware.js'
 
@@ -261,5 +262,25 @@ router.post('/login', authUser)
 router
   .route('/profile')
   .get(protect, getUserProfile)
+
+/**
+ * @openapi
+ * /api/auth/users:
+ *   get:
+ *     summary: Get all users
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: List of all users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/UserProfileResponse'
+ *       500:
+ *         description: Server error
+ */
+router.get('/users', getAllUsers)
 
 export default router
