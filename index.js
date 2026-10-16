@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
 import swaggerUi from 'swagger-ui-express';
-import swaggerSpec from './config/swagger.js';
+import { swaggerSpec, swaggerUiOptions } from './config/swagger.js';
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import connectDB from "./config/db.js";
 
@@ -34,7 +34,7 @@ app.use(
 );
 
 // Swagger Documentation Route
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/expense", expenseRoutes);
