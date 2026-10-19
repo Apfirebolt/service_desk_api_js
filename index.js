@@ -12,6 +12,7 @@ import expenseRoutes from "./routes/expense.js";
 import contactRoutes from "./routes/contact.js";
 import budgetRoutes from "./routes/budget.js";
 import userRoutes from "./routes/user.js";
+import rewardRoutes from "./routes/reward.js";
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.use("/api/expense", expenseRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/budget", budgetRoutes);
+app.use("/api/reward", rewardRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running....");
