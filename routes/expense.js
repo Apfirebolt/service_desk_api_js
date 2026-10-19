@@ -6,7 +6,9 @@ import {
   getUserExpenses,
   deleteExpense,
   updateExpense,
-  getDuplicateExpenses
+  getDuplicateExpenses,
+  generateMockExpenses,
+  clearMockExpenses
 } from '../controllers/expenseController.js'
 import { protect } from '../middleware/authMiddleware.js'
 
@@ -72,6 +74,10 @@ import { protect } from '../middleware/authMiddleware.js'
 router
   .route('/duplicate-expenses')
   .get(getDuplicateExpenses)
+router
+  .route('/generate-mock')
+  .post(protect, generateMockExpenses)
+  .delete(protect, clearMockExpenses)
 
 /**
  * @openapi
