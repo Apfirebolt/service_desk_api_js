@@ -21,7 +21,7 @@ const getUserExpenses = asyncHandler(async (req, res) => {
         .exec();
       const count = await Expense.countDocuments({ user: req.user._id });
       res.status(200).json({
-        data: expenses,
+        expenses,
         totalExpense,
         total: count,
         success: true,
