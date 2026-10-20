@@ -6,6 +6,7 @@ import {
   handleJoinRequest,
   addRoomExpense,
   getUserRooms,
+  getRoomDetails,
 } from "../controllers/roomController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -84,6 +85,26 @@ router.route("/").get(protect, getUserRooms).post(protect, createExpenseRoom);
  *         description: Join request sent successfully
  */
 router.route("/:id/invite").post(protect, inviteUserToRoom);
+
+/**
+ * @openapi
+ * /api/rooms/{id}:
+ *   get:
+ *     summary: Get details of a specific expense room
+ *     tags: [Expense Rooms]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Room details retrieved successfully
+ */
+router.route("/:id").get(protect, getRoomDetails);
 
 /**
  * @openapi

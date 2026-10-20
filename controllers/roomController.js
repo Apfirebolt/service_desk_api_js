@@ -239,10 +239,40 @@ const getUserRooms = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get details of a specific room
+// @route   GET /api/rooms/:id
+// @access  Private
+const getRoomDetails = asyncHandler(async (req, res) => {
+  console.log("Fetching details for room ID:", req.params.id);
+  const room = await ExpenseRoom.findById(req.params.id)
+    .populate("creator", "name email")
+    .populate("members", "name email"); 
+
+  if (!room) {
+    res.status(404);
+    throw new Error("Room not found");
+  }
+
+  // calculate total expenses for the room
+  const totalExpenses = await Expense.aggregate([
+    { $match: { roomId: room._id } },
+    { $group: { _id: null, total: { $sum: "$amount" } } }
+  ]);
+  room.totalExpenses = totalExpenses.length > 0 ? totalExpenses[0].total : 0;
+  const expenses = await Expense.find({ roomId: room._id });
+  room.expenses = expenses;
+
+  res.status(200).json({
+    success: true,
+    room,
+  });
+});
+
 export {
   createExpenseRoom,
   inviteUserToRoom,
   handleJoinRequest,
   addRoomExpense,
   getUserRooms,
+  getRoomDetails,
 };

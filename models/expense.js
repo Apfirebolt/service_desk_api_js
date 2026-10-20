@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const expenseSchema = new mongoose.Schema({
@@ -28,13 +27,36 @@ const expenseSchema = new mongoose.Schema({
     required: false,
     default: false
   },
+  roomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ExpenseRoom',
+    required: false
+  },
+  // Who created/logged the expense record
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  // NEW: Who actually paid for the expense (defaults to the creator if not specified)
+  paidBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
+  // NEW: Array of user IDs specifying who is splitting this expense
+  splitBetween: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  }],
+  isPaid: {
+    type: Boolean,
+    required: false,
+    default: false
   }
 }, { timestamps: true });
 
-const Expense = mongoose.model('Expense', expenseSchema)
+const Expense = mongoose.model('Expense', expenseSchema);
 
-export default Expense
+export default Expense;
