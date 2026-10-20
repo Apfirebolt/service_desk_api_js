@@ -7,6 +7,7 @@ import {
   updateUserProfile,
   changeUserPassword,
   updateUserProfilePic,
+  getRoomJoiningRequests,
   refreshToken,
 } from '../controllers/authController.js'
 import { protect } from '../middleware/authMiddleware.js'
@@ -319,6 +320,35 @@ router
  *         description: Server error
  */
 router.route('/change-password').put(protect, changeUserPassword)
+
+/**
+ * @openapi
+ * /api/auth/room-requests:
+ *   get:
+ *     summary: Get all room joining requests for logged in user
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of room joining requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 requests:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/RoomJoinRequest'
+ *       401:
+ *         description: Unauthorized - Token missing or invalid
+ *       500:
+ *         description: Server error
+ */
+router.route('/room-requests').get(protect, getRoomJoiningRequests)
 
 /**
  * @openapi

@@ -1,6 +1,8 @@
 import asyncHandler from "express-async-handler";
 import { ExpenseRoom, RoomJoinRequest } from "../models/room.js";
 import Expense from "../models/expense.js";
+import User from "../models/user.js";
+import Notification from "../models/notification.js";
 
 // @desc    Create an expense room
 // @route   POST /api/rooms
@@ -31,8 +33,13 @@ const createExpenseRoom = asyncHandler(async (req, res) => {
 // @route   POST /api/rooms/:id/invite
 // @access  Private
 const inviteUserToRoom = asyncHandler(async (req, res) => {
-  const { userId, notificationMessage } = req.body;
+  const { userEmail, notificationMessage } = req.body;
   const roomId = req.params.id;
+
+  if (!userEmail) {
+    res.status(400);
+    throw new Error("Please provide a user email to invite.");
+  }
 
   const room = await ExpenseRoom.findById(roomId);
   if (!room) {
@@ -49,10 +56,28 @@ const inviteUserToRoom = asyncHandler(async (req, res) => {
     throw new Error("Only the creator or existing members can invite new users.");
   }
 
-  // Check if user is already a member
-  if (room.members.some((m) => m.toString() === userId)) {
+  // Find the user by exact email match
+  const targetUser = await User.findOne({ email: userEmail.toLowerCase().trim() });
+  if (!targetUser) {
+    res.status(404);
+    throw new Error("User not found.");
+  }
+
+  const userId = targetUser._id;
+
+  // Prevent inviting yourself
+  if (userId.toString() === req.user._id.toString()) {
     res.status(400);
-    throw new Error("User is already a member of this room.");
+    throw new Error("You cannot invite yourself to the room.");
+  }
+
+  // Check if user is already a member or creator
+  const isAlreadyMember = room.creator.toString() === userId.toString() ||
+    room.members.some((m) => m.toString() === userId.toString());
+
+  if (isAlreadyMember) {
+    res.status(400);
+    throw new Error("User is already a member of this expense room.");
   }
 
   // Check if a pending invite already exists
@@ -72,6 +97,15 @@ const inviteUserToRoom = asyncHandler(async (req, res) => {
     user: userId,
     notificationMessage: notificationMessage || `You have been invited to join the expense room: ${room.title}`,
     status: "pending",
+  });
+
+  // Automatically trigger a persistent notification for the invited user
+  await Notification.create({
+    user: userId,
+    title: "Expense Room Invitation",
+    message: notificationMessage || `You have been invited to join the room: ${room.title}`,
+    type: "room_invite",
+    relatedRoom: roomId,
   });
 
   res.status(201).json({

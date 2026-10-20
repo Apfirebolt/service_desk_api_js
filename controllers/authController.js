@@ -2,6 +2,7 @@ import asyncHandler from 'express-async-handler'
 import jwt from 'jsonwebtoken'
 import { generateToken, generateRefreshToken } from '../utils/generateToken.js'
 import User from '../models/user.js'
+import { RoomJoinRequest } from '../models/room.js'
 import cloudinary from '../utils/cloudinary.js'
 
 // Helper: Stream buffer directly to Cloudinary
@@ -231,6 +232,14 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   })
 })
 
+// @desc    Get all room joining requests for logged in user
+// @route   GET /api/auth/room-requests
+// @access  Private
+const getRoomJoiningRequests = asyncHandler(async (req, res) => {
+  const requests = await RoomJoinRequest.find({ user: req.user._id, status: "pending" }).populate("room");
+  res.status(200).json({ success: true, requests });
+});
+
 export {
   authUser,
   registerUser,
@@ -239,4 +248,5 @@ export {
   updateUserProfilePic,
   changeUserPassword,
   updateUserProfile,
+  getRoomJoiningRequests
 }
