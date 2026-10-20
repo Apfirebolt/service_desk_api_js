@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler";
 import mongoose from "mongoose";
-import Budget from "../models/Budget.js";
+import Budget from "../models/budget.js";
 import Expense from "../models/expense.js";
 
 // @desc    Get user budgets with actual spending progress for a given month/year
@@ -26,7 +26,7 @@ const getUserBudgets = asyncHandler(async (req, res) => {
     },
     {
       $group: {
-        _id: "$type", // matches the category type in your expense model
+        _id: "$category", // Fixed to match the 'category' field in your Expense model
         totalSpent: { $sum: "$amount" }
       }
     }
