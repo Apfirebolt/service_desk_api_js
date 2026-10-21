@@ -149,6 +149,15 @@ const handleJoinRequest = asyncHandler(async (req, res) => {
     }
   }
 
+  // Generate notification for the user who sent the join request
+  await Notification.create({
+    user: joinRequest.user,
+    title: "Room Join Request Update",
+    message: `Your request to join the room has been ${status}.`,
+    type: "room_request_update",
+    relatedRoom: joinRequest.room,
+  });
+
   res.status(200).json({
     success: true,
     message: `Join request ${status} successfully.`,
@@ -161,7 +170,7 @@ const handleJoinRequest = asyncHandler(async (req, res) => {
 // @access  Private
 const addRoomExpense = asyncHandler(async (req, res) => {
   const roomId = req.params.id;
-  const { amount, type, description, category, mode, expenseType, splitBetween } = req.body;
+  const { amount, description, category, mode, paidBy, splitBetween } = req.body;
 
   const room = await ExpenseRoom.findById(roomId);
   if (!room) {
@@ -183,45 +192,65 @@ const addRoomExpense = asyncHandler(async (req, res) => {
     throw new Error("The creator has disabled member expense additions for this room.");
   }
 
-  // 1. Create primary expense for the current user
-  const primaryExpense = await Expense.create({
-    amount: parseFloat(amount),
-    type: type || category || "General",
-    category: category || type || "General",
-    description: description || "Room expense",
-    mode: mode || "Cash",
-    expenseType: expenseType || "Variable",
-    isSplit: false,
-    user: req.user._id,
-  });
+  const expensePayer = paidBy || req.user._id;
+  const totalAmount = parseFloat(amount);
+  const createdExpenses = [];
 
-  const createdSplitExpenses = [primaryExpense];
-
-  // 2. Handle Splitting if requested (splitBetween is an array of member IDs or boolean flag)
+  // If splitBetween is provided and has members
   if (splitBetween && Array.isArray(splitBetween) && splitBetween.length > 0) {
-    const splitAmount = parseFloat(amount) / (splitBetween.length + 1); // Splitting equally among selected members + payer
+    // Split equally among the selected members
+    const splitAmount = totalAmount / splitBetween.length;
 
     for (const memberId of splitBetween) {
-      if (memberId !== req.user._id.toString()) {
-        const splitExpense = await Expense.create({
-          amount: parseFloat(splitAmount.toFixed(2)),
-          type: type || category || "General",
-          category: category || type || "General",
-          description: `[Split from ${req.user.name || 'Room Member'}] ${description || ''}`,
-          mode: mode || "Cash",
-          expenseType: expenseType || "Variable",
-          isSplit: true, // Marked true as requested
+      const isPayer = memberId.toString() === expensePayer.toString();
+
+      const splitExpense = await Expense.create({
+        amount: parseFloat(splitAmount.toFixed(2)),
+        category: category || "General",
+        description: description || "Room expense",
+        mode: mode || "Cash",
+        roomId: room._id,
+        user: memberId,              // The user record this expense belongs to
+        paidBy: expensePayer,        // Who actually paid the bill
+        splitBetween: splitBetween,  // All members involved in the split
+        isSplit: true,
+        isPaid: isPayer,             // True for the payer, false for others
+      });
+
+      createdExpenses.push(splitExpense);
+
+      // Notify other members if they didn't pay
+      if (!isPayer) {
+        await Notification.create({
           user: memberId,
+          title: "New Split Expense",
+          message: `You owe a split share of $${splitAmount.toFixed(2)} in the room "${room.title}".`,
+          type: "expense_split",
+          relatedRoom: room._id,
         });
-        createdSplitExpenses.push(splitExpense);
       }
     }
+  } else {
+    // If no split, record full amount for the payer
+    const singleExpense = await Expense.create({
+      amount: totalAmount,
+      category: category || "General",
+      description: description || "Room expense",
+      mode: mode || "Cash",
+      roomId: room._id,
+      user: expensePayer,
+      paidBy: expensePayer,
+      splitBetween: [],
+      isSplit: false,
+      isPaid: true,
+    });
+    createdExpenses.push(singleExpense);
   }
 
   res.status(201).json({
     success: true,
-    message: "Room expense recorded successfully.",
-    expenses: createdSplitExpenses,
+    message: "Room expense recorded and split successfully.",
+    expenses: createdExpenses,
   });
 });
 
@@ -239,32 +268,35 @@ const getUserRooms = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get details of a specific room
+// @desc    Get room details, total expenses, and related expenses list
 // @route   GET /api/rooms/:id
 // @access  Private
 const getRoomDetails = asyncHandler(async (req, res) => {
-  console.log("Fetching details for room ID:", req.params.id);
-  const room = await ExpenseRoom.findById(req.params.id)
+  const roomId = req.params.id;
+
+  const room = await ExpenseRoom.findById(roomId)
     .populate("creator", "name email")
-    .populate("members", "name email"); 
+    .populate("members", "name email");
 
   if (!room) {
     res.status(404);
     throw new Error("Room not found");
   }
 
-  // calculate total expenses for the room
-  const totalExpenses = await Expense.aggregate([
-    { $match: { roomId: room._id } },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
-  room.totalExpenses = totalExpenses.length > 0 ? totalExpenses[0].total : 0;
-  const expenses = await Expense.find({ roomId: room._id });
-  room.expenses = expenses;
+  // Fetch all expenses associated with this room and populate user details
+  const expenses = await Expense.find({ roomId: room._id })
+    .populate("paidBy", "name email")
+    .populate("user", "name email")
+    .sort({ createdAt: -1 });
+
+  // Calculate total expenses for the room
+  const totalExpenses = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
   res.status(200).json({
     success: true,
     room,
+    expenses,
+    totalExpenses,
   });
 });
 
