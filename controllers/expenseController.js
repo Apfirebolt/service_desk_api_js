@@ -1,5 +1,6 @@
 import asyncHandler from "express-async-handler";
 import Expense from "../models/expense.js";
+import { categories, mode, descriptions } from "../utils/constants.js";
 
 // @desc    List of user expense
 // @route   GET /api/expense
@@ -78,6 +79,12 @@ const updateExpense = asyncHandler(async (req, res) => {
     throw new Error("Only Expense owner or admin can edit Expense");
   }
 
+  // if an expense is split, it can only be edited by person who paid it
+  if (expense && expense.isSplit && expense.paidBy.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error("Only the person who paid the split expense can edit it.");
+  }
+
   if (expense) {
     expense.amount = req.body.amount || expense.amount;
     expense.description = req.body.description || expense.description;
@@ -105,6 +112,12 @@ const deleteExpense = asyncHandler(async (req, res) => {
   ) {
     res.status(403);
     throw new Error("Only Expense owner or admin can delete Expense");
+  }
+
+  // if the expense is split, it cannot be deleted
+  if (expense && expense.isSplit) {
+    res.status(400);
+    throw new Error("Split expenses cannot be deleted individually.");
   }
 
   if (expense) {
@@ -150,41 +163,6 @@ const generateMockExpenses = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Invalid count. Please specify 10, 20, 30, or 40 items.");
   }
-
-  const categories = [
-    "Food & Dining",
-    "Transport",
-    "Shopping",
-    "Bills & Utilities",
-    "Entertainment",
-    "Health & Fitness",
-    "Travel",
-    "Other",
-  ];
-
-  const mode = [
-    "Cash",
-    "Credit Card",
-    "Gift Card",
-    "Debit Card",
-    "Bank Transfer",
-    "Mobile Payment",
-    "Cheque",
-    "UPI",
-  ];
-
-  const descriptions = [
-    "Morning coffee and pastry",
-    "Supermarket grocery run",
-    "Fuel refill at station",
-    "Dinner with colleagues",
-    "Monthly streaming subscription",
-    "Online electronics purchase",
-    "Uber ride to downtown",
-    "Pharmacy and medical supplies",
-    "Weekend movie tickets",
-    "Utility bill payment",
-  ];
 
   const mockExpensesData = [];
 

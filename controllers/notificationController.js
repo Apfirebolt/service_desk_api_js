@@ -1,5 +1,5 @@
 import asyncHandler from "express-async-handler";
-import Notification from "../models/Notification.js";
+import Notification from "../models/notification.js";
 
 // @desc    Get all notifications for authenticated user
 // @route   GET /api/notifications

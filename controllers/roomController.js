@@ -154,7 +154,7 @@ const handleJoinRequest = asyncHandler(async (req, res) => {
     user: joinRequest.user,
     title: "Room Join Request Update",
     message: `Your request to join the room has been ${status}.`,
-    type: "room_request_update",
+    type: "room_invite",
     relatedRoom: joinRequest.room,
   });
 
