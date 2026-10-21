@@ -271,35 +271,91 @@ const getUserRooms = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get room details, total expenses, and related expenses list
+// @desc    Get room details, total expenses, and pre-grouped expenses list for scalable UI rendering
 // @route   GET /api/rooms/:id
 // @access  Private
 const getRoomDetails = asyncHandler(async (req, res) => {
   const roomId = req.params.id;
 
   const room = await ExpenseRoom.findById(roomId)
-    .populate("creator", "name email")
-    .populate("members", "name email");
+    .populate("creator", "firstName lastName email")
+    .populate("members", "firstName lastName email");
 
   if (!room) {
     res.status(404);
     throw new Error("Room not found");
   }
 
-  // Fetch all expenses associated with this room and populate user details
+  // Fetch all flat expense records for this room
   const expenses = await Expense.find({ roomId: room._id })
-    .populate("paidBy", "name email")
-    .populate("user", "name email")
-    .populate("splitBetween", "firstName lastName email")
+    .populate("paidBy", "firstName lastName email")
+    .populate("user", "firstName lastName email")
     .sort({ createdAt: -1 });
 
-  // Calculate total expenses for the room
+  // Calculate total room expenses across all entries
   const totalExpenses = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+  // Group split expenses into unified master bill entries
+  const groupedMap = new Map();
+
+  expenses.forEach((exp) => {
+    // 1. Handle regular personal or non-split room expenses
+    if (!exp.isSplit) {
+      groupedMap.set(exp._id.toString(), {
+        type: "single",
+        _id: exp._id,
+        description: exp.description,
+        category: exp.category,
+        mode: exp.mode || "Cash",
+        amount: exp.amount,
+        paidBy: exp.paidBy,
+        createdAt: exp.createdAt,
+      });
+      return;
+    }
+
+    // 2. Handle shared split expenses
+    const payerId = exp.paidBy?._id?.toString() || exp.paidBy?.toString();
+    
+    // Truncate timestamp to seconds (YYYY-MM-DDTHH:mm:ss) to reliably group 
+    // split items created together in a loop execution
+    const timeKey = new Date(exp.createdAt).toISOString().slice(0, 19);
+    const groupKey = `${exp.description.trim().toLowerCase()}_${payerId}_${timeKey}`;
+
+    if (!groupedMap.has(groupKey)) {
+      groupedMap.set(groupKey, {
+        type: "splitGroup",
+        groupId: groupKey,
+        description: exp.description,
+        category: exp.category,
+        mode: exp.mode || "Cash",
+        paidBy: exp.paidBy,
+        createdAt: exp.createdAt,
+        totalAmount: 0,
+        shares: [],
+      });
+    }
+
+    const group = groupedMap.get(groupKey);
+    
+    // Gather individual participant payment status and share amount
+    group.shares.push({
+      _id: exp._id, // Individual share ID used for mark-paid and confirm-settlement API calls
+      user: exp.user,
+      amount: exp.amount,
+      isPaid: exp.isPaid,
+      settlementStatus: exp.settlementStatus || "unpaid",
+    });
+    
+    group.totalAmount += Number(exp.amount || 0);
+  });
+
+  const unifiedBills = Array.from(groupedMap.values());
 
   res.status(200).json({
     success: true,
     room,
-    expenses,
+    expenses: unifiedBills, // Returns strictly grouped entries (e.g., 4 instead of 11)
     totalExpenses,
   });
 });
