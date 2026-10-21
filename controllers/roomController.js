@@ -210,11 +210,13 @@ const addRoomExpense = asyncHandler(async (req, res) => {
         description: description || "Room expense",
         mode: mode || "Cash",
         roomId: room._id,
-        user: memberId,              // The user record this expense belongs to
-        paidBy: expensePayer,        // Who actually paid the bill
-        splitBetween: splitBetween,  // All members involved in the split
+        user: memberId,             
+        paidBy: expensePayer,
+        splitBetween: splitBetween,
         isSplit: true,
-        isPaid: isPayer,             // True for the payer, false for others
+        // If the member is the one who paid, mark them as settled automatically
+        isPaid: isPayer,
+        settlementStatus: isPayer ? "settled" : "unpaid",
       });
 
       createdExpenses.push(splitExpense);
@@ -243,6 +245,7 @@ const addRoomExpense = asyncHandler(async (req, res) => {
       splitBetween: [],
       isSplit: false,
       isPaid: true,
+      settlementStatus: "settled",
     });
     createdExpenses.push(singleExpense);
   }
