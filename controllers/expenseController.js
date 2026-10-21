@@ -16,6 +16,8 @@ const getUserExpenses = asyncHandler(async (req, res) => {
       const totalExpense = result.length > 0 ? result[0].totalExpense : 0;
       const expenses = await Expense.find({ user: req.user._id })
         .populate("user", "firstName lastName")
+        .populate("paidBy", "firstName lastName email")
+        .populate("roomId", "title description")
         .skip(itemsPerPage * startPage - itemsPerPage)
         .limit(itemsPerPage)
         .exec();
