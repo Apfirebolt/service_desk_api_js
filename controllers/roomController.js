@@ -287,6 +287,7 @@ const getRoomDetails = asyncHandler(async (req, res) => {
   const expenses = await Expense.find({ roomId: room._id })
     .populate("paidBy", "name email")
     .populate("user", "name email")
+    .populate("splitBetween", "firstName lastName email")
     .sort({ createdAt: -1 });
 
   // Calculate total expenses for the room
