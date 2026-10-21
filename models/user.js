@@ -28,8 +28,21 @@ const userSchema = mongoose.Schema(
     userType: {
       type: String,
       enum: ['member', 'staff'],
-      required : false,
-      default: 'member'
+      required: false,
+      default: 'member',
+    },
+    // profile settings
+    settings: {
+      currency: {
+        type: String,
+        default: 'USD',
+        uppercase: true,
+        trim: true,
+        maxlength: 3,
+      },
+      // You can easily add more settings here later, e.g.:
+      timezone: { type: String, default: 'UTC' },
+      theme: { type: String, enum: ['light', 'dark'], default: 'light' }
     },
   },
   {

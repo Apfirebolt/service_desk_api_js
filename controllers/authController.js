@@ -202,7 +202,7 @@ const changeUserPassword = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'Password updated successfully' })
 })
 
-// @desc    Update user profile
+// @desc    Update user profile and settings
 // @route   PUT /api/auth/profile
 // @access  Private
 const updateUserProfile = asyncHandler(async (req, res) => {
@@ -213,11 +213,25 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     throw new Error('User not found')
   }
 
-  const { firstName, lastName, email } = req.body
+  const { firstName, lastName, email, settings, currency } = req.body
 
   if (firstName) user.firstName = firstName
   if (lastName) user.lastName = lastName
   if (email) user.email = email
+
+  // Ensure user.settings exists before updating
+  if (!user.settings) {
+    user.settings = {}
+  }
+
+  // Handle settings update (supports both nested object and direct currency field)
+  if (settings) {
+    if (settings.currency !== undefined) {
+      user.settings.currency = settings.currency
+    }
+  } else if (currency !== undefined) {
+    user.settings.currency = currency
+  }
 
   const updatedUser = await user.save()
 
@@ -229,6 +243,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     isAdmin: updatedUser.isAdmin,
     userType: updatedUser.userType,
     profilePic: updatedUser.profilePic,
+    settings: updatedUser.settings, // Return updated settings to frontend state
   })
 })
 
