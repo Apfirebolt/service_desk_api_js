@@ -1,5 +1,5 @@
-import express from 'express'
-const router = express.Router()
+import express from 'express';
+const router = express.Router();
 import {
   createExpense,
   getExpense,
@@ -8,9 +8,11 @@ import {
   updateExpense,
   getDuplicateExpenses,
   generateMockExpenses,
-  clearMockExpenses
-} from '../controllers/expenseController.js'
-import { protect } from '../middleware/authMiddleware.js'
+  clearMockExpenses,
+  markSplitPaymentPaid,
+  confirmSplitPayment
+} from '../controllers/expenseController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 /**
  * @openapi
@@ -43,6 +45,10 @@ import { protect } from '../middleware/authMiddleware.js'
  *             user:
  *               type: string
  *               example: 60d5ecb8b5c9c62b3c7c1a10
+ *             settlementStatus:
+ *               type: string
+ *               enum: [unpaid, pending_confirmation, settled]
+ *               example: unpaid
  *             createdAt:
  *               type: string
  *               format: date-time
@@ -73,11 +79,12 @@ import { protect } from '../middleware/authMiddleware.js'
  */
 router
   .route('/duplicate-expenses')
-  .get(getDuplicateExpenses)
+  .get(getDuplicateExpenses);
+
 router
   .route('/generate-mock')
   .post(protect, generateMockExpenses)
-  .delete(protect, clearMockExpenses)
+  .delete(protect, clearMockExpenses);
 
 /**
  * @openapi
@@ -123,7 +130,87 @@ router
  */
 router.route('/')
   .post(protect, createExpense)
-  .get(protect, getUserExpenses)
+  .get(protect, getUserExpenses);
+
+/**
+ * @openapi
+ * /api/expense/{expenseId}/mark-paid:
+ *   put:
+ *     summary: Mark split expense share as paid by debtor
+ *     tags: [Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB Expense ObjectId
+ *     responses:
+ *       200:
+ *         description: Marked as paid successfully. Awaiting payer confirmation.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Marked as paid. Awaiting payer confirmation.
+ *                 expense:
+ *                   $ref: '#/components/schemas/Expense'
+ *       401:
+ *         description: Unauthorized - Token missing or invalid
+ *       403:
+ *         description: Unauthorized action on this expense share
+ *       404:
+ *         description: Expense share not found
+ */
+router.route('/:expenseId/mark-paid').put(protect, markSplitPaymentPaid);
+
+/**
+ * @openapi
+ * /api/expense/{expenseId}/confirm-settlement:
+ *   put:
+ *     summary: Confirm split expense payment received by creditor
+ *     tags: [Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB Expense ObjectId
+ *     responses:
+ *       200:
+ *         description: Payment successfully confirmed and settled!
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Payment successfully confirmed and settled!
+ *                 expense:
+ *                   $ref: '#/components/schemas/Expense'
+ *       401:
+ *         description: Unauthorized - Token missing or invalid
+ *       403:
+ *         description: Only the user who made the original payment can confirm receipt.
+ *       404:
+ *         description: Expense share not found
+ */
+router.route('/:expenseId/confirm-settlement').put(protect, confirmSplitPayment);
 
 /**
  * @openapi
@@ -216,6 +303,6 @@ router
   .route('/:id')
   .get(protect, getExpense)
   .patch(protect, updateExpense)
-  .delete(protect, deleteExpense)
+  .delete(protect, deleteExpense);
 
-export default router
+export default router;

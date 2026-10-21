@@ -32,19 +32,16 @@ const expenseSchema = new mongoose.Schema({
     ref: 'ExpenseRoom',
     required: false
   },
-  // Who created/logged the expense record
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  // NEW: Who actually paid for the expense (defaults to the creator if not specified)
   paidBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: false
   },
-  // NEW: Array of user IDs specifying who is splitting this expense
   splitBetween: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -54,9 +51,20 @@ const expenseSchema = new mongoose.Schema({
     type: Boolean,
     required: false,
     default: false
+  },
+  settlementStatus: {
+    type: String,
+    enum: ["unpaid", "pending_confirmation", "settled"],
+    default: "unpaid",
+    required: false
+  },
+  confirmedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
   }
 }, { timestamps: true });
 
-const Expense = mongoose.model('Expense', expenseSchema);
+const Expense = mongoose.models.Expense || mongoose.model('Expense', expenseSchema);
 
 export default Expense;
