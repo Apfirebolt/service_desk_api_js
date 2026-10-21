@@ -86,6 +86,5 @@ const deleteRecurringExpense = asyncHandler(async (req, res) => {
 export {
   getRecurringExpenses,
   createRecurringExpense,
-  deleteRecurringExpense,
-  processRecurringExpenses
+  deleteRecurringExpense
 };

@@ -6,35 +6,38 @@ import Expense from "../models/expense.js";
 // @access  Private
 const getUserExpenses = asyncHandler(async (req, res) => {
   const itemsPerPage = 50;
-  const startPage = req.query.page || 1;
-  await Expense.aggregate([
-    { $match: { user: req.user._id } },
-    { $group: { _id: null, totalExpense: { $sum: "$amount" } } },
-  ])
-    .exec()
-    .then(async (result) => {
-      const totalExpense = result.length > 0 ? result[0].totalExpense : 0;
-      const expenses = await Expense.find({ user: req.user._id })
-        .populate("user", "firstName lastName")
-        .populate("paidBy", "firstName lastName email")
-        .populate("roomId", "title description")
-        .skip(itemsPerPage * startPage - itemsPerPage)
-        .limit(itemsPerPage)
-        .exec();
-      const count = await Expense.countDocuments({ user: req.user._id });
-      res.status(200).json({
-        expenses,
-        totalExpense,
-        total: count,
-        success: true,
-        itemsPerPage,
-        startPage,
-        lastPage: Math.ceil(count / itemsPerPage),
-      });
-    })
-    .catch((err) => {
-      return next(err);
-    });
+  const startPage = Number(req.query.page) || 1;
+  const pendingConfirmationOnly = req.query.pendingConfirmation === 'true';
+
+  // Build match query
+  let matchQuery = { user: req.user._id };
+
+  if (pendingConfirmationOnly) {
+    // If querying items where the logged-in user is the creditor awaiting confirmation
+    matchQuery = {
+      paidBy: req.user._id,
+      isSplit: true,
+      settlementStatus: "pending_confirmation"
+    };
+  }
+
+  const count = await Expense.countDocuments(matchQuery);
+  const expenses = await Expense.find(matchQuery)
+    .populate("user", "firstName lastName email")
+    .populate("paidBy", "firstName lastName email")
+    .populate("roomId", "title description")
+    .skip(itemsPerPage * startPage - itemsPerPage)
+    .limit(itemsPerPage)
+    .exec();
+
+  res.status(200).json({
+    success: true,
+    expenses,
+    total: count,
+    itemsPerPage,
+    startPage,
+    lastPage: Math.ceil(count / itemsPerPage),
+  });
 });
 
 // @desc    Create a Expense
@@ -121,14 +124,6 @@ const deleteExpense = asyncHandler(async (req, res) => {
 // @access  Private - User or Admin
 const getExpense = asyncHandler(async (req, res) => {
   const expense = await Expense.findById(req.params.id);
-
-  if (
-    expense.user.toString() !== req.user._id.toString() &&
-    req.user.isAdmin === false
-  ) {
-    res.status(403);
-    throw new Error("Only Expense owner and admin can view Expenses");
-  }
 
   if (expense) {
     res.json(expense);

@@ -301,7 +301,7 @@ router.route('/:expenseId/confirm-settlement').put(protect, confirmSplitPayment)
  */
 router
   .route('/:id')
-  .get(protect, getExpense)
+  .get(getExpense)
   .patch(protect, updateExpense)
   .delete(protect, deleteExpense);
 
