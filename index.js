@@ -1,4 +1,5 @@
 import express from "express";
+import cloudinary from "cloudinary";
 import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
@@ -29,6 +30,13 @@ if (process.env.NODE_ENV === "development") {
 }
 
 app.use(express.json());
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
+});
 
 // Flexible CORS setup for both local development and production
 app.use(

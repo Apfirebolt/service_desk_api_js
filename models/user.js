@@ -31,6 +31,16 @@ const userSchema = mongoose.Schema(
       required: false,
       default: 'member',
     },
+    profilePic: {
+      public_id: {
+        type: String,
+        default: '',
+      },
+      url: {
+        type: String,
+        default: '',
+      },
+    },
     // profile settings
     settings: {
       currency: {
@@ -40,7 +50,6 @@ const userSchema = mongoose.Schema(
         trim: true,
         maxlength: 3,
       },
-      // You can easily add more settings here later, e.g.:
       timezone: { type: String, default: 'UTC' },
       theme: { type: String, enum: ['light', 'dark'], default: 'light' }
     },

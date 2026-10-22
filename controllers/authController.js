@@ -118,7 +118,7 @@ const refreshToken = asyncHandler(async (req, res) => {
   }
 })
 
-// @desc    Get user profile
+// @desc    Get user profile and settings
 // @route   GET /api/auth/profile
 // @access  Private
 const getUserProfile = asyncHandler(async (req, res) => {
@@ -133,6 +133,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
       isAdmin: user.isAdmin,
       userType: user.userType,
       profilePic: user.profilePic,
+      settings: user.settings || { currency: 'USD', theme: 'dark' }, // Include settings object
     })
   } else {
     res.status(404)
