@@ -38,11 +38,14 @@ cloudinary.config({
   secure: true,
 });
 
-// Flexible CORS setup for both local development and production
+const allowedOrigins = [
+  "https://xpencer.softgenie.org",
+];
+
 app.use(
   cors({
-    origin: process.env.NODE_ENV === "production" 
-      ? true // Allow production frontend domains (or specify your frontend URL here)
+    origin: process.env.NODE_ENV === "production"
+      ? allowedOrigins
       : ["http://localhost:8080", "http://localhost:5173", "http://localhost:3000"],
     credentials: true,
   })
