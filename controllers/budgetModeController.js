@@ -26,7 +26,7 @@ const getUserBudgetModes = asyncHandler(async (req, res) => {
     },
     {
       $group: {
-        _id: "$paymentMode", // Matches the payment mode field in your Expense model
+        _id: "$mode",
         totalSpent: { $sum: "$amount" }
       }
     }
