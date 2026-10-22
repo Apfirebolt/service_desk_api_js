@@ -69,12 +69,11 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Only listen locally if not running in a serverless environment like Vercel
-if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 5000;
   const HOST = '0.0.0.0';
   app.listen(PORT, HOST, () => {
     console.log(`Server running at http://${HOST}:${PORT}`);
-    console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
   });
 }
 
