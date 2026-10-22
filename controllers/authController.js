@@ -36,6 +36,7 @@ const authUser = asyncHandler(async (req, res) => {
       isAdmin: user.isAdmin,
       token: generateToken(user),
       ...(rememberMe && { refreshToken: generateRefreshToken(user) }),
+      settings: user.settings,
       profilePic: user.profilePic,
     })
   } else {
@@ -75,6 +76,7 @@ const registerUser = asyncHandler(async (req, res) => {
       isAdmin: user.isAdmin,
       userType: user.userType,
       token: generateToken(user),
+      settings: user.settings,
       refreshToken: generateRefreshToken(user),
     })
   } else {
@@ -244,7 +246,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     isAdmin: updatedUser.isAdmin,
     userType: updatedUser.userType,
     profilePic: updatedUser.profilePic,
-    settings: updatedUser.settings, // Return updated settings to frontend state
+    settings: updatedUser.settings,
   })
 })
 
