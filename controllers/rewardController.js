@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler";
-import Reward from "../models/Reward.js";
-import Budget from "../models/Budget.js";
+import Reward from "../models/reward.js";
+import Budget from "../models/budget.js";
 
 // @desc    Get user reward profile, points, badges, and history
 // @route   GET /api/reward
