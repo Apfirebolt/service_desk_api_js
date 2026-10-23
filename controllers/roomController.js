@@ -317,8 +317,6 @@ const getRoomDetails = asyncHandler(async (req, res) => {
     // 2. Handle shared split expenses
     const payerId = exp.paidBy?._id?.toString() || exp.paidBy?.toString();
     
-    // Truncate timestamp to seconds (YYYY-MM-DDTHH:mm:ss) to reliably group 
-    // split items created together in a loop execution
     const timeKey = new Date(exp.createdAt).toISOString().slice(0, 19);
     const groupKey = `${exp.description.trim().toLowerCase()}_${payerId}_${timeKey}`;
 
@@ -340,7 +338,7 @@ const getRoomDetails = asyncHandler(async (req, res) => {
     
     // Gather individual participant payment status and share amount
     group.shares.push({
-      _id: exp._id, // Individual share ID used for mark-paid and confirm-settlement API calls
+      _id: exp._id,
       user: exp.user,
       amount: exp.amount,
       isPaid: exp.isPaid,
@@ -355,7 +353,7 @@ const getRoomDetails = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     room,
-    expenses: unifiedBills, // Returns strictly grouped entries (e.g., 4 instead of 11)
+    expenses: unifiedBills,
     totalExpenses,
   });
 });

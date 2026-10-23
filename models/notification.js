@@ -19,7 +19,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["room_invite", "expense_split", "system", "general"],
+      enum: ["room_invite", "expense_split", "system", "general", "expense_mark_paid", "expense_confirmed"],
       default: "general",
     },
     relatedRoom: {

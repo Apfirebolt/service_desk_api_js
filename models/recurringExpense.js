@@ -24,9 +24,16 @@ const recurringExpenseSchema = new mongoose.Schema({
     enum: ['monthly', 'weekly', 'yearly'],
     default: 'monthly'
   },
+  billingDay: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 31
+  },
   lastGeneratedDate: {
     type: Date,
-    required: false
+    required: false,
+    default: null
   },
   isActive: {
     type: Boolean,

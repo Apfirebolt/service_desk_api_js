@@ -55,13 +55,19 @@ const getRecurringExpenses = asyncHandler(async (req, res) => {
 // @route   POST /api/recurring
 // @access  Private
 const createRecurringExpense = asyncHandler(async (req, res) => {
-  const { amount, description, category, frequency } = req.body;
+  const { amount, description, category, frequency, billingDate } = req.body;
+
+  if (!billingDate) {
+    res.status(400);
+    throw new Error('Billing date is required');
+  }
 
   const recurring = await RecurringExpense.create({
     user: req.user._id,
     amount,
     description,
     category,
+    billingDay: Number(billingDate),
     frequency: frequency || 'monthly'
   });
 

@@ -1,5 +1,6 @@
 import asyncHandler from "express-async-handler";
 import Expense from "../models/expense.js";
+import Notification from "../models/notification.js";
 import { categories, mode, descriptions } from "../utils/constants.js";
 
 // @desc    List of user expense
@@ -266,6 +267,18 @@ const markSplitPaymentPaid = asyncHandler(async (req, res) => {
   expense.settlementStatus = "pending_confirmation";
   await expense.save();
 
+  // generate notification for the creditor (paidBy) that the debtor has marked the expense as paid
+  if (expense.paidBy) {
+    await Notification.create({
+      user: expense.paidBy,
+      title: "Expense Marked as Paid",
+      message: `${req.user.email} has marked the expense "${expense.description}" as paid.`,
+      type: "expense_mark_paid",
+      referenceId: expense._id,
+      relatedExpense: expense._id,
+    });
+  }
+
   res.status(200).json({
     success: true,
     message: "Marked as paid. Awaiting payer confirmation.",
@@ -295,6 +308,18 @@ const confirmSplitPayment = asyncHandler(async (req, res) => {
   expense.isPaid = true;
   expense.confirmedBy = userId;
   await expense.save();
+
+  // generate notification for the debtor (user) that the creditor has confirmed the payment
+  if (expense.user) {
+    await Notification.create({
+      user: expense.user,
+      title: "Expense Payment Confirmed",
+      message: `${req.user.email} has confirmed the payment for the expense "${expense.description}".`,
+      type: "expense_confirmed",
+      referenceId: expense._id,
+      relatedExpense: expense._id,
+    });
+  }
 
   res.status(200).json({
     success: true,
