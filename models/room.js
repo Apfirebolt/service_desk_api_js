@@ -41,7 +41,12 @@ const roomJoinRequestSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true, // User being invited/requested
+      required: true,
+    },
+    sentBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
     },
     notificationMessage: {
       type: String,

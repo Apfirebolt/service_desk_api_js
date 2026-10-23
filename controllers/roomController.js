@@ -95,6 +95,7 @@ const inviteUserToRoom = asyncHandler(async (req, res) => {
   const joinRequest = await RoomJoinRequest.create({
     room: roomId,
     user: userId,
+    sentBy: req.user._id,
     notificationMessage: notificationMessage || `You have been invited to join the expense room: ${room.title}`,
     status: "pending",
   });
