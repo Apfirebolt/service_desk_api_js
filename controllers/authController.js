@@ -21,6 +21,8 @@ const uploadToCloudinary = (buffer) => {
   })
 }
 
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 // @desc    Authenticate or register user with Google OAuth
 // @route   POST /api/auth/google
 // @access  Public
