@@ -1,4 +1,6 @@
 import asyncHandler from 'express-async-handler'
+import { OAuth2Client } from 'google-auth-library';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken'
 import { generateToken, generateRefreshToken } from '../utils/generateToken.js'
 import User from '../models/user.js'
@@ -18,6 +20,83 @@ const uploadToCloudinary = (buffer) => {
     uploadStream.end(buffer)
   })
 }
+
+// @desc    Authenticate or register user with Google OAuth
+// @route   POST /api/auth/google
+// @access  Public
+const googleAuth = asyncHandler(async (req, res) => {
+  const { credential } = req.body;
+
+  if (!credential) {
+    res.status(400);
+    throw new Error('Google credential token is required');
+  }
+
+  try {
+    // 1. Verify the Google ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, given_name, family_name, picture, sub: googleId } = payload;
+
+    if (!email) {
+      res.status(400);
+      throw new Error('Google account email not found');
+    }
+
+    // 2. Check if user already exists in database
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // If user exists but didn't have a profile picture or Google metadata, update profile pic optionally
+      if (!user.profilePic?.url && picture) {
+        user.profilePic = { url: picture, public_id: '' };
+        await user.save();
+      }
+    } else {
+      // 3. If user doesn't exist, create a new user automatically
+      // Generate a random secure temporary password since they use Google login
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+
+      user = await User.create({
+        firstName: given_name || 'Google',
+        lastName: family_name || 'User',
+        email,
+        password: randomPassword, // Will be hashed by userSchema pre-save hook
+        profilePic: {
+          url: picture || '',
+          public_id: '',
+        },
+        settings: {
+          currency: 'USD',
+          timezone: 'UTC',
+          theme: 'light',
+        },
+      });
+    }
+
+    // 4. Respond with your standard app tokens and user info
+    res.status(200).json({
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      userType: user.userType,
+      token: generateToken(user),
+      refreshToken: generateRefreshToken(user),
+      settings: user.settings,
+      profilePic: user.profilePic,
+    });
+  } catch (error) {
+    console.error('Google token verification error:', error);
+    res.status(401);
+    throw new Error('Google authentication failed: ' + error.message);
+  }
+});
 
 // @desc    Auth user & get token
 // @route   POST /api/auth/login
@@ -260,6 +339,7 @@ const getRoomJoiningRequests = asyncHandler(async (req, res) => {
 
 export {
   authUser,
+  googleAuth,
   registerUser,
   refreshToken,
   getUserProfile,

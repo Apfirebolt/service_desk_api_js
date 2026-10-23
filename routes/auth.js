@@ -2,6 +2,7 @@ import express from 'express'
 import multer from 'multer'
 import {
   authUser,
+  googleAuth,
   registerUser,
   getUserProfile,
   updateUserProfile,
@@ -15,6 +16,38 @@ import { protect } from '../middleware/authMiddleware.js'
 const router = express.Router()
 const upload = multer({ storage: multer.memoryStorage() })
 
+/**
+ * @openapi
+ * /api/auth/google:
+ *   post:
+ *     summary: Authenticate or register user with Google OAuth
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - credential
+ *             properties:
+ *               credential:
+ *                 type: string
+ *                 example: eyJhbGciOiJSUzI1NiIsImtpZCI6IjE2MTIzNDU2Nzg5MCJ9...
+ *     responses:
+ *       200:
+ *         description: Successfully authenticated or registered user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Bad request (missing or invalid credential)
+ *       401:
+ *         description: Unauthorized (Google authentication failed)
+ */
+
+router.post('/google', googleAuth)
 
 /**
  * @openapi
