@@ -103,7 +103,7 @@ const inviteUserToRoom = asyncHandler(async (req, res) => {
   await Notification.create({
     user: userId,
     title: "Expense Room Invitation",
-    message: notificationMessage || `You have been invited to join the room: ${room.title}`,
+    message: notificationMessage || `You have been invited to join the room: ${room.title} by ${req.user.email}`,
     type: "room_invite",
     relatedRoom: roomId,
   });
@@ -170,7 +170,7 @@ const handleJoinRequest = asyncHandler(async (req, res) => {
 // @access  Private
 const addRoomExpense = asyncHandler(async (req, res) => {
   const roomId = req.params.id;
-  const { amount, description, category, mode, paidBy, splitBetween } = req.body;
+  const { amount, description, category, mode, paidBy, splitBetween, isUnequal } = req.body;
 
   const room = await ExpenseRoom.findById(roomId);
   if (!room) {
@@ -196,9 +196,56 @@ const addRoomExpense = asyncHandler(async (req, res) => {
   const totalAmount = parseFloat(amount);
   const createdExpenses = [];
 
-  // If splitBetween is provided and has members
-  if (splitBetween && Array.isArray(splitBetween) && splitBetween.length > 0) {
-    // Split equally among the selected members
+  // Handle Unequal Split (Object map: { [memberId]: customAmount })
+  if (isUnequal && splitBetween && typeof splitBetween === "object" && !Array.isArray(splitBetween)) {
+    const memberIds = Object.keys(splitBetween);
+    
+    // Validate sum matches total amount
+    let sumCheck = 0;
+    for (const memberId of memberIds) {
+      sumCheck += parseFloat(splitBetween[memberId]) || 0;
+    }
+
+    if (Math.abs(sumCheck - totalAmount) > 0.01) {
+      res.status(400);
+      throw new Error(`The sum of custom split amounts must equal the total amount (${totalAmount}).`);
+    }
+
+    for (const memberId of memberIds) {
+      const shareAmount = parseFloat(splitBetween[memberId]) || 0;
+      if (shareAmount <= 0) continue; // Skip zero shares if preferred
+
+      const isPayer = memberId.toString() === expensePayer.toString();
+
+      const splitExpense = await Expense.create({
+        amount: parseFloat(shareAmount.toFixed(2)),
+        category: category || "General",
+        description: description || "Room expense",
+        mode: mode || "Cash",
+        roomId: room._id,
+        user: memberId,
+        paidBy: expensePayer,
+        splitBetween: memberIds,
+        isSplit: true,
+        isPaid: isPayer,
+        settlementStatus: isPayer ? "settled" : "unpaid",
+      });
+
+      createdExpenses.push(splitExpense);
+
+      if (!isPayer) {
+        await Notification.create({
+          user: memberId,
+          title: "New Split Expense",
+          message: `You owe a split share of ${req.user.currency || "$"}${shareAmount.toFixed(2)} in the room "${room.title}".`,
+          type: "expense_split",
+          relatedRoom: room._id,
+        });
+      }
+    }
+  } 
+  // Handle Equal Split (Array of member IDs)
+  else if (splitBetween && Array.isArray(splitBetween) && splitBetween.length > 0) {
     const splitAmount = totalAmount / splitBetween.length;
 
     for (const memberId of splitBetween) {
@@ -214,26 +261,25 @@ const addRoomExpense = asyncHandler(async (req, res) => {
         paidBy: expensePayer,
         splitBetween: splitBetween,
         isSplit: true,
-        // If the member is the one who paid, mark them as settled automatically
         isPaid: isPayer,
         settlementStatus: isPayer ? "settled" : "unpaid",
       });
 
       createdExpenses.push(splitExpense);
 
-      // Notify other members if they didn't pay
       if (!isPayer) {
         await Notification.create({
           user: memberId,
           title: "New Split Expense",
-          message: `You owe a split share of $${splitAmount.toFixed(2)} in the room "${room.title}".`,
+          message: `You owe a split share of ${req.user.currency || "$"}${splitAmount.toFixed(2)} in the room "${room.title}".`,
           type: "expense_split",
           relatedRoom: room._id,
         });
       }
     }
-  } else {
-    // If no split, record full amount for the payer
+  } 
+  // If no split, record full amount for the payer
+  else {
     const singleExpense = await Expense.create({
       amount: totalAmount,
       category: category || "General",
