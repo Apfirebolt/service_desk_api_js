@@ -405,6 +405,77 @@ const getRoomDetails = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Update expense room details
+// @route   PUT /api/rooms/:id
+// @access  Private
+const updateRoomDetails = asyncHandler(async (req, res) => {
+  const roomId = req.params.id;
+  const { title, description } = req.body;
+
+  const room = await ExpenseRoom.findById(roomId);
+  if (!room) {
+    res.status(404);
+    throw new Error("Room not found");
+  }
+
+  // only room creator can update the room details
+  if (room.creator.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error("Not authorized to update this room");
+  }
+
+  if (title) room.title = title;
+  if (description) room.description = description;
+
+  const updatedRoom = await room.save();
+  res.status(200).json({
+    success: true,
+    room: updatedRoom,
+  });
+});
+
+// @desc    Delete expense room details
+// @route   DELETE /api/rooms/:id
+// @access  Private
+const deleteRoom = asyncHandler(async (req, res) => {
+  const roomId = req.params.id;
+
+  const room = await ExpenseRoom.findById(roomId);
+  if (!room) {
+    res.status(400);
+    throw new Error("Room not found");
+  }
+
+  // 1. Only room creator can delete the room
+  if (room.creator.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error("Not authorized to delete this room");
+  }
+
+  // Check if there are any unsettled expenses related to this room.
+  const unsettledExpensesCount = await Expense.countDocuments({
+    roomId: roomId,
+    settlementStatus: { $ne: "settled" },
+  });
+
+  if (unsettledExpensesCount > 0) {
+    res.status(400);
+    throw new Error(
+      "Cannot delete room. All expenses must be settled or the room must have no expenses."
+    );
+  }
+
+  // 3. Delete all join requests (pending, accepted, or rejected) associated with this room
+  await RoomJoinRequest.deleteMany({ room: roomId });
+
+  await room.deleteOne();
+
+  res.status(200).json({
+    success: true,
+    message: "Room, associated expenses, and join requests deleted successfully",
+  });
+});
+
 export {
   createExpenseRoom,
   inviteUserToRoom,
@@ -412,4 +483,6 @@ export {
   addRoomExpense,
   getUserRooms,
   getRoomDetails,
+  updateRoomDetails,
+  deleteRoom,
 };

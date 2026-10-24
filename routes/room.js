@@ -7,6 +7,8 @@ import {
   addRoomExpense,
   getUserRooms,
   getRoomDetails,
+  deleteRoom,
+  updateRoomDetails
 } from "../controllers/roomController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -103,8 +105,63 @@ router.route("/:id/invite").post(protect, inviteUserToRoom);
  *     responses:
  *       200:
  *         description: Room details retrieved successfully
+ *       404:
+ *         description: Room not found
+ *       403:
+ *         description: Not authorized to update this room
+ *       404:
+ *         description: Room not found
+ *   update:
+ *     summary: Update expense room details (creator only)
+ *     tags: [Expense Rooms]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Goa Trip 2026
+ *               description:
+ *                 type: string
+ *                 example: Shared expenses for accommodation and food.
+ *     responses:
+ *       200:
+ *         description: Room updated successfully
+ *       403:
+ *         description: Not authorized to update this room
+ *       404:
+ *         description: Room not found
+ *   delete:
+ *     summary: Delete an expense room (creator only, if no expenses or all settled)
+ *     tags: [Expense Rooms]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Room, associated expenses, and join requests deleted successfully
+ *       400:
+ *         description: Room not found or contains unsettled expenses
+ *       403:
+ *         description: Not authorized to delete this room
  */
-router.route("/:id").get(protect, getRoomDetails);
+router.route("/:id").get(protect, getRoomDetails).delete(protect, deleteRoom).put(protect, updateRoomDetails);
 
 /**
  * @openapi
