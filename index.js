@@ -18,6 +18,7 @@ import roomRoutes from "./routes/room.js";
 import recurringRoutes from "./routes/recurringExpense.js";
 import notificationRoutes from "./routes/notification.js";
 import budgetModeRoutes from "./routes/budgetMode.js";
+import subscriberRoutes from "./routes/subscriber.js";
 
 dotenv.config();
 
@@ -65,6 +66,7 @@ app.use("/api/rooms", roomRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/recurring", recurringRoutes);
 app.use("/api/budget-mode", budgetModeRoutes);
+app.use("/api/subscribers", subscriberRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running....");
